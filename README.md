@@ -200,12 +200,7 @@ llm-cost-observatory/
 
 ---
 
-## Background
 
-Built as a standalone open-source version of observability work done in production
-at [TransUnion](https://www.linkedin.com/in/chandrasekharchowdary), where the same
-ClickHouse + Langfuse + bloat-detection approach reduced LLM spend by >50% on a
-multi-agent coding assistant (Google ADK, MCP, 6-layer guard rails).
 
 ---
 
