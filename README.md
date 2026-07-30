@@ -200,10 +200,6 @@ llm-cost-observatory/
 
 ---
 
-
-
----
-
 ## License
 
 MIT
