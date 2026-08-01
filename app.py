@@ -26,7 +26,7 @@ with st.sidebar:
 
     page = st.radio(
         "Navigate",
-        ["Overview", "Cost Breakdown", "Context Bloat", "Cache Analysis"],
+        ["Overview", "Cost Breakdown", "Context Bloat", "Cache Analysis", "🎯 Recommendations"],
         label_visibility="collapsed",
     )
 
@@ -112,4 +112,7 @@ elif page == "Context Bloat":
     render(df)
 elif page == "Cache Analysis":
     from src.pages.cache_analysis import render
+    render(df)
+elif page == "🎯 Recommendations":
+    from src.pages.recommendations import render
     render(df)
