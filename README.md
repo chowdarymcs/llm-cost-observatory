@@ -2,7 +2,8 @@
 
 > **Observability-driven LLM cost optimization.**  
 > Ingest Langfuse traces from ClickHouse or the Langfuse Cloud API — detect context bloat,
-> measure cache efficiency, and identify model routing opportunities — all in a Streamlit dashboard.
+> identify cost spikes and regressions, quantify savings from each fix with copy-paste code snippets,
+> and forecast your optimised monthly spend — all in a Streamlit dashboard.
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.35+-red)
@@ -73,7 +74,7 @@ fix the right thing instead of guessing.
 - Cost by workflow (top 20, color-coded by avg cost)
 - Per-trace cost histogram + sortable table
 - Model comparison (stacked input / output / cache costs)
-- **Routing opportunity detector** — flags expensive models running low-output workloads
+- Routing opportunity detector — flags expensive models running low-output workloads
 
 ### 🧠 Context Bloat Detection
 - Bloat score per session: `actual_input_tokens / expected_input_tokens`
@@ -86,8 +87,18 @@ fix the right thing instead of guessing.
 - Overall cache hit rate and total savings
 - Daily cache hit rate trend
 - Hit rate by workflow — identifies which workflows benefit most (or least)
-- **Before/After comparison table**: actual cost vs. hypothetical cost without caching
-- Hit-rate-based recommendations (when to enable caching, when to extend it to RAG context)
+- Before/After comparison table: actual cost vs. hypothetical cost without caching
+- Hit-rate-based recommendations
+
+### 🎯 Recommendations (action centre)
+- **Active Alerts** — cost spikes (2×+ vs baseline), bloat regressions, cache hit rate drops, new expensive workflows detected automatically
+- **Savings Forecaster** — waterfall chart showing current 30-day projection → optimised projection after implementing each fix
+- **Optimization Priority Matrix** — all opportunities ranked by `monthly_savings ÷ effort`, colour-coded by implementation complexity
+- **Detailed Recommendations** — five anti-pattern detectors, each with:
+  - Quantified monthly savings estimate
+  - Plain-English problem description
+  - Specific fix with implementation notes
+  - **Copy-paste Python code snippet** for rolling summarization, tool output compression, two-phase RAG retrieval, prompt caching, and model routing
 
 ---
 
@@ -161,7 +172,7 @@ from langfuse.decorators import langfuse_context, observe
 def my_agent_step(user_input: str) -> str:
     langfuse_context.update_current_trace(
         session_id="session-abc-123",   # critical for bloat analysis
-        name="coding-assistant/act",    # becomes the "workflow" label
+        name="document-qa/generate",    # becomes the "workflow" label in the dashboard
     )
     # ... your LLM call here
 ```
