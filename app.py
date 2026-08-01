@@ -34,9 +34,23 @@ with st.sidebar:
     st.markdown("### Data Source")
     source = st.selectbox(
         "Connector",
-        ["Langfuse Cloud API", "ClickHouse (Self-hosted)"],
+        ["🎭 Demo Mode (no credentials)", "Langfuse Cloud API", "ClickHouse (Self-hosted)"],
         label_visibility="collapsed",
     )
+
+    demo_scenario = "anomaly"
+    if source.startswith("🎭"):
+        demo_scenario = st.radio(
+            "Scenario",
+            ["anomaly", "clean"],
+            format_func=lambda s: (
+                "⚠️ Unoptimised system" if s == "anomaly" else "✅ Well-optimised system"
+            ),
+            help=(
+                "Unoptimised: injected context bloat, cache misses, model over-spend, "
+                "and a mid-period cost spike. Well-optimised: healthy baseline for comparison."
+            ),
+        )
 
     st.markdown("### Date Range")
     end_date = datetime.utcnow()
@@ -50,13 +64,16 @@ with st.sidebar:
     load_btn = st.button("🔄 Load Data", use_container_width=True, type="primary")
 
 # ── Data loading (cached per connector + date range) ───────────────────
-@st.cache_data(ttl=300, show_spinner="Fetching traces from Langfuse…")
-def load_data(connector_type: str, start_str: str, end_str: str):
+@st.cache_data(ttl=300, show_spinner="Loading traces…")
+def load_data(connector_type: str, start_str: str, end_str: str, scenario: str = "anomaly"):
     from datetime import datetime
     start_dt = datetime.fromisoformat(start_str)
     end_dt = datetime.fromisoformat(end_str)
 
-    if connector_type == "ClickHouse (Self-hosted)":
+    if connector_type.startswith("🎭"):
+        from src.connectors.demo_connector import DemoConnector
+        conn = DemoConnector(scenario=scenario)
+    elif connector_type == "ClickHouse (Self-hosted)":
         from src.connectors.clickhouse_connector import ClickHouseConnector
         conn = ClickHouseConnector()
     else:
@@ -76,6 +93,7 @@ if load_btn or st.session_state.df is None:
             source,
             datetime.combine(start, datetime.min.time()).isoformat(),
             datetime.combine(end, datetime.max.time()).isoformat(),
+            demo_scenario,
         )
     except Exception as e:
         st.error(f"Connection error: {e}")
@@ -100,6 +118,14 @@ if df is not None and not df.empty:
 if df is None:
     st.info("👈 Configure your data source in the sidebar and click **Load Data** to begin.")
     st.stop()
+
+if source.startswith("🎭"):
+    scenario_label = (
+        "⚠️ **Unoptimised system** — injected context bloat, cache misses, model over-spend, and a cost spike"
+        if demo_scenario == "anomaly"
+        else "✅ **Well-optimised system** — healthy baseline with good cache rates and controlled context growth"
+    )
+    st.info(f"🎭 **Demo Mode** — synthetic data, no Langfuse connection required. {scenario_label}")
 
 if page == "Overview":
     from src.pages.overview import render
