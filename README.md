@@ -104,18 +104,50 @@ fix the right thing instead of guessing.
 
 ## Quick Start
 
+### Try it in 30 seconds — no credentials needed
+
+```bash
+git clone https://github.com/chowdarymcs/llm-cost-observatory.git
+cd llm-cost-observatory
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+Select **🎭 Demo Mode** in the sidebar. Two scenarios ship with the repo:
+
+| Scenario | What it simulates |
+|---|---|
+| ⚠️ **Unoptimised** | Runaway history accumulation, uncompressed tool outputs, RAG over-fetch, ~6% cache hit rate, a premium model doing trivial classification, and a mid-period cost spike |
+| ✅ **Well-optimised** | Healthy baseline — controlled context growth, ~66% cache hit rate, task-appropriate model routing |
+
+Running both back to back shows the same workload costing **7× more** purely from architecture.
+
+### Generate a shareable HTML report
+
+```bash
+python generate_report.py --demo anomaly
+python generate_report.py --demo clean
+
+# Against real Langfuse data
+python generate_report.py --source api --days 30
+python generate_report.py --source clickhouse --days 30
+```
+
+Produces a single self-contained HTML file — all charts embedded, opens in any browser, no server required.
+
+### Interactive notebook
+
+[`notebooks/llm_cost_observatory_analysis.ipynb`](notebooks/llm_cost_observatory_analysis.ipynb) walks through the full methodology — bloat score derivation, root cause fingerprinting, savings quantification, and regression detection — with matplotlib visualisations at each step. Runs standalone with no dependency on the rest of the repo.
+
+---
+
+## Connecting to real data
+
 ### Prerequisites
 - Python 3.11+
 - A Langfuse account (Cloud) or self-hosted Langfuse instance with ClickHouse
 
-### 1. Clone and install
-```bash
-git clone https://github.com/<your-username>/llm-cost-observatory.git
-cd llm-cost-observatory
-pip install -r requirements.txt
-```
-
-### 2. Configure
+### Configure
 ```bash
 cp .env.example .env
 ```
@@ -138,12 +170,7 @@ CLICKHOUSE_PASSWORD=your-password
 CLICKHOUSE_DATABASE=default
 ```
 
-### 3. Run
-```bash
-streamlit run app.py
-```
-
-Open `http://localhost:8501`, select your date range, click **Load Data**.
+Then run `streamlit run app.py`, switch the sidebar connector from Demo Mode to your source, select a date range, and click **Load Data**.
 
 ---
 
@@ -187,27 +214,67 @@ this is what the bloat detector uses to compute turn-by-turn token growth.
 ```
 llm-cost-observatory/
 ├── app.py                          # Streamlit entry point
+├── generate_report.py              # Standalone HTML report CLI
 ├── config.py                       # Settings (Pydantic) + model pricing table
 ├── requirements.txt
 ├── .env.example
+├── notebooks/
+│   └── llm_cost_observatory_analysis.ipynb   # Full methodology walkthrough
 ├── src/
 │   ├── connectors/
 │   │   ├── base.py                 # Abstract connector interface
+│   │   ├── demo_connector.py       # Synthetic data — no credentials needed
 │   │   ├── clickhouse_connector.py # Self-hosted Langfuse via ClickHouse
 │   │   └── langfuse_api_connector.py # Cloud / REST API
 │   ├── analysis/
 │   │   ├── cost_analyzer.py        # Cost aggregations
 │   │   ├── bloat_detector.py       # Context bloat scoring
-│   │   └── cache_analyzer.py       # Cache hit rate and savings
+│   │   ├── cache_analyzer.py       # Cache hit rate and savings
+│   │   ├── recommendations.py      # Anti-pattern detection + code fixes
+│   │   ├── anomaly.py              # Cost spike / regression alerts
+│   │   └── forecaster.py           # Savings projection
 │   ├── models/
 │   │   └── trace_models.py         # Normalized data models
 │   └── pages/
 │       ├── overview.py
 │       ├── cost_breakdown.py
 │       ├── bloat_detection.py
-│       └── cache_analysis.py
-└── docs/
+│       ├── cache_analysis.py
+│       └── recommendations.py      # Alerts, priority matrix, forecast
+└── outputs/                        # Generated reports land here
 ```
+
+---
+
+## Methodology — how the bloat score works
+
+In a healthy multi-turn session, the input tokens for turn *N* should be approximately:
+
+```
+expected_input(N) = system_prompt + Σ output(1..N-1)
+```
+
+You re-send what was said before, plus your instructions. Nothing more.
+
+```
+bloat_score = actual_input_tokens / expected_input_tokens
+```
+
+| Score | Interpretation |
+|---|---|
+| < 2× | Healthy |
+| 2–5× | Moderate — worth investigating |
+| > 5× | Severe — something is being re-injected repeatedly |
+
+The score needs no code instrumentation beyond the token counts already present in any Langfuse trace. Root causes are then separated by their statistical signature:
+
+| Pattern | Signature | Fix |
+|---|---|---|
+| History accumulation | Input grows steadily with turn index | Rolling summarization |
+| Tool output injection | High input variance *within* a session | Compress tool results |
+| RAG over-fetch | Uniformly high input from turn 1 | Two-phase retrieval |
+| Cache miss | Low cache-read ratio across the board | Enable prompt caching |
+| Model over-spend | Premium model, consistently small outputs | Route to cheaper model |
 
 ---
 
