@@ -206,13 +206,27 @@ def generate_recommendations(
     )
     wf_stats["sessions_per_day"] = wf_stats["session_count"] / days
 
-    # ── 1. HISTORY_ACCUMULATION ────────────────────────────────────────
+    # ── 1. HISTORY_ACCUMULATION (aggregated per workflow) ─────────────
     if not bloat_df.empty:
         bloated = bloat_df[bloat_df["bloat_score"] >= 2.0].copy()
         if not bloated.empty:
-            for _, row in bloated.iterrows():
+            # Aggregate across sessions — one recommendation per workflow
+            wf_bloat = (
+                bloated.groupby("workflow")
+                .agg(
+                    avg_bloat_score  =("bloat_score",  "mean"),
+                    median_waste     =("waste_tokens", "median"),
+                    total_waste_usd  =("waste_usd",    "sum"),
+                    affected_sessions=("session_id",   "nunique"),
+                )
+                .reset_index()
+            )
+
+            for _, row in wf_bloat.iterrows():
                 wf = row["workflow"]
-                waste_tokens = int(row["waste_tokens"])
+                waste_tokens = int(row["median_waste"])
+                affected = int(row["affected_sessions"])
+
                 spd = wf_stats.loc[wf_stats["workflow"] == wf, "sessions_per_day"]
                 spd_val = float(spd.values[0]) if not spd.empty else 0.1
 
@@ -220,17 +234,19 @@ def generate_recommendations(
                 model_val = model.values[0] if not model.empty else ""
                 price = _pricing_for(model_val)["input"]
                 waste_usd = (waste_tokens / 1_000_000) * price
-                monthly = waste_usd * spd_val * 30 * 0.70  # 70% recoverable via summarization
+                # 70% of compounding waste is recoverable via rolling summarization
+                monthly = waste_usd * spd_val * 30 * 0.70
 
                 recs.append(Recommendation(
                     id=_rec_id(wf, "HISTORY_ACCUMULATION"),
                     workflow=wf,
                     pattern="HISTORY_ACCUMULATION",
-                    title="Implement rolling summarization",
+                    title=f"Rolling summarization for '{wf}'",
                     problem=(
-                        f"Workflow '{wf}' has a bloat score of {row['bloat_score']:.1f}× — "
-                        f"input tokens are growing {row['bloat_score']:.1f}× faster than expected "
-                        f"from output alone. Estimated ~{waste_tokens:,} wasted tokens/session."
+                        f"Workflow '{wf}' averages a bloat score of {row['avg_bloat_score']:.1f}× "
+                        f"across {affected:,} affected sessions — input tokens are growing far "
+                        f"faster than prior output alone would explain. "
+                        f"Median waste: ~{waste_tokens:,} tokens/session."
                     ),
                     fix="Collapse turns older than N into a compact summary before re-injecting. "
                         "Rolling summarization typically recovers 60–80% of compounding token waste.",
@@ -242,7 +258,7 @@ def generate_recommendations(
                     effort="Medium",
                     effort_score=2,
                     priority_score=round(monthly / 2, 4),
-                    impacted_sessions=int(row.get("turns", 1)),
+                    impacted_sessions=affected,
                 ))
 
     # ── 2. TOOL_OUTPUT_INJECTION (high input variance within sessions) ─
