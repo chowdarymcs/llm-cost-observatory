@@ -287,7 +287,7 @@ def build_html(df, scenario_note="") -> str:
 <html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>LLM Cost Observatory — Analysis Report</title>
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-3.7.0.min.js"></script>
 <style>{CSS}</style></head><body>
 
 <h1>🔭 LLM Cost Observatory</h1>
