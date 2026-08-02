@@ -10,6 +10,9 @@
 ![Langfuse](https://img.shields.io/badge/Langfuse-Cloud%20%7C%20Self--hosted-purple)
 ![License](https://img.shields.io/badge/License-MIT-green)
 [![Kaggle](https://img.shields.io/badge/Kaggle-Read%20the%20analysis-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/code/chandrasekhargenai/llm-cost-observatory-finding-where-your-llm-spend)
+[![Live Report](https://img.shields.io/badge/Live%20Report-View%20Dashboard-2ECC71?logo=githubpages&logoColor=white)](https://chowdarymcs.github.io/llm-cost-observatory/)
+
+🔗 **[View the live report →](https://chowdarymcs.github.io/llm-cost-observatory/)** — the full analysis output (alerts, savings forecast, priority matrix, code fixes) with zero setup required.
 
 📓 **[Read the full methodology on Kaggle →](https://www.kaggle.com/code/chandrasekhargenai/llm-cost-observatory-finding-where-your-llm-spend)** — a runnable walkthrough comparing an optimised system against an unoptimised one costing **7× more** on the same workload.
 
